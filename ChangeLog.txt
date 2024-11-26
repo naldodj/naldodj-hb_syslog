@@ -1,0 +1,13 @@
+/* Encoding: UTF-8 (No BOM)  Notation (in 5th column):
+     * Change  ! Fix  % Optimize  + Add  - Remove  ; Comment
+   Entries may not always be in chronological/commit order.
+   See license at the end of file. */
+
+2024-11-26 16:29 UTC naldodj
+  + bin/3rdpatch.hb
+  + bin/check.hb
+  + bin/commit.hb
+  + bin/findnoasciicharacters.ps1
+  + bin/harbour.ucf
+  + bin/tolower.ps1
+  + src/hb_syslog.prg
