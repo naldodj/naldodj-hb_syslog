@@ -1,7 +1,7 @@
 /*
     hb_syslog.prg
     Released to Public Domain.
-    compile: hbmk2.exe hb_syslog.prg f:/cygwin64/home/marin/naldodj-hb/contrib/xhb/hblog.prg -ohb_syslog.exe -i/home/marin/naldodj-hb/contrib/xhb xhb.hbc -mt
+    compile: hbmk2.exe hb_syslog.prg -ohb_syslog.exe xhb.hbc -mt
     ref.: ./github/core/contrib/hbmisc/udpds.prg
 */
 
@@ -30,7 +30,7 @@ procedure Main()
         return
     endif
 
-    QOut("Log server started on:",NetName(),":",nPort)
+    QOut("Log server started on:",NetName(),":",HB_NToS(nPort))
     WAIT "Press ENTER to shut down the server..."
 
     hb_udpds_Stop(hSocket)
