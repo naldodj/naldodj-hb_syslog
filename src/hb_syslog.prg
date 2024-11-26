@@ -3,6 +3,14 @@
     Released to Public Domain.
     compile: hbmk2.exe hb_syslog.prg -ohb_syslog.exe xhb.hbc -mt
     ref.: ./github/core/contrib/hbmisc/udpds.prg
+    TODO:
+        +Install as service ref.: c:\github\core\contrib\hbnetio\utils\hbnetio\_winsvc.prg
+        +.ini configuration
+        +IPV6 Suport
+        +Other Log Types: FILE*,CONSOLE,MONITOR,SYSLOG,EMAIL,DEBUG,DBF
+            ref.: F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblog.ch
+                  F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblog.prg
+
 */
 
 #include "xhb.ch"
