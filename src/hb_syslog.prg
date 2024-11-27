@@ -14,7 +14,12 @@
 */
 
 #include "xhb.ch"
+
+#include "inkey.ch"
+
+#include "hbver.ch"
 #include "hblog.ch"
+#include "hbinkey.ch"
 #include "hbsocket.ch"
 
 #require "xhb"
@@ -31,9 +36,19 @@
 REQUEST HB_MT
 REQUEST HB_CODEPAGE_UTF8EX
 
-procedure Main()
+procedure Main(...)
 
-    local nPort as numeric:=514 // Porta padrão do Syslog
+    local aArgs as array:=hb_AParams()
+
+    local cName as character
+    local cVersion as character
+    local cParam as character
+    local cArgName as character
+
+    local idx as numeric
+    local nKey as numeric
+    local nPort as numeric
+
     local phSocket as pointer
 
     if (!hb_mtvm())
@@ -43,20 +58,70 @@ procedure Main()
 
     Hb_SetCodePage("UTF8")
 
+    if (;
+         (Empty(aArgs));
+         .or.;
+         Lower(aArgs[1])=="-h";
+         .or.;
+         Lower(aArgs[1])=="--help";
+    )
+      ShowHelp(nil,aArgs)
+      return
+    endif
+
+    for each cParam in aArgs
+
+      if (!Empty(cParam))
+
+         if ((idx:=At("=",cParam))==0)
+            cArgName:=Lower(cParam)
+            cParam:=""
+         else
+            cArgName:=Left(cParam,idx-1)
+            cParam:=SubStr(cParam,idx+1)
+         endif
+
+         do case
+            case (cArgName=="-n")
+               cName:=cParam
+            case (cArgName=="-p")
+               nPort:=val(cParam)
+            case (cArgName=="-v")
+               cVersion:=cParam
+            otherwise
+               ShowHelp("Unrecognized option:"+cArgName+iif(Len(cParam)>0,"="+cParam,""))
+               return
+         endcase
+      endif
+    next each
+
+    hb_default(@cName,"hb_syslog")
+    hb_default(@cVersion,"1")
+    hb_default(@nPort,514)// Porta padrão do Syslog
+
     QOut("Starting Log Server...")
     // Inicia o servidor
-    phSocket:=hb_udpds_Start(nPort,"hb_syslog","1")
+    phSocket:=hb_udpds_Start(nPort,cName,cVersion)
     if (phSocket==NIL)
         QOut("Error starting log server!")
         return
     endif
 
-    QOut("Log server started on:",NetName(),":",HB_NToS(nPort))
-    WAIT "Press ENTER to shut down the server..."
+    QOut("Log server ["+cName+"] started on:",NetName(),":",HB_NToS(nPort))
+
+    QOut("Press <CTRL+Q> to shut down the server...")
+
+    while (.T.)
+        nKey:=Inkey(0.1,hb_bitOr(INKEY_ALL,HB_INKEY_GTEVENT))
+        if (nKey==HB_K_CTRL_Q)
+            exit
+        endif
+        hb_idleSleep(0.1)
+    end while
 
     hb_udpds_Stop(phSocket)
 
-return
+    return
 
 /* Server */
 static function hb_udpds_Start(nPort as numeric,cName as character,cVersion as character)
@@ -64,17 +129,17 @@ static function hb_udpds_Start(nPort as numeric,cName as character,cVersion as c
     local phSocket as pointer
 
     if (!Empty(phSocket:=hb_socketOpen(NIL,HB_SOCKET_PT_DGRAM)))
-        if hb_socketBind(phSocket,{HB_SOCKET_AF_INET,"0.0.0.0",nPort})
+        if (hb_socketBind(phSocket,{HB_SOCKET_AF_INET,"0.0.0.0",nPort}))
             hb_threadDetach(hb_threadStart(@UDPDS(),phSocket,cName,cVersion))
             return(phSocket)
         endif
         hb_socketClose(phSocket)
     endif
 
-return(NIL)
+    return(NIL)
 
 static function hb_udpds_Stop(phSocket as pointer)
-return(hb_socketClose(phSocket))
+    return(hb_socketClose(phSocket))
 
 static procedure UDPDS(phSocket as pointer,cName as character,cVersion as character)
 
@@ -95,7 +160,7 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
     local uLen as usual /*ANYTYPE*/
 
     INIT LOG ON FILE (nFilPrio,cFileName,nFileSize,nFileCount)
-    SET LOG STYLE nStyle
+    SET LOG STYLE (nStyle)
 
     cName:=hb_StrToUTF8(cName)
     cVersion:=iif(HB_ISSTRING(cVersion),hb_StrToUTF8(cVersion),"")
@@ -139,4 +204,75 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
 
     CLOSE LOG
 
-return
+    return
+
+static procedure ShowSubHelp(xLine as anytype,/*@*/nMode as numeric,nIndent as numeric,n as numeric)
+
+   DO CASE
+      CASE xLine == NIL
+      CASE HB_ISNUMERIC( xLine )
+         nMode := xLine
+      CASE HB_ISEVALITEM( xLine )
+         Eval( xLine )
+      CASE HB_ISARRAY( xLine )
+         IF nMode == 2
+            OutStd( Space( nIndent ) + Space( 2 ) )
+         ENDIF
+         AEval( xLine, {| x, n | ShowSubHelp( x, @nMode, nIndent + 2, n ) } )
+         IF nMode == 2
+            OutStd( hb_eol() )
+         ENDIF
+      OTHERWISE
+         DO CASE
+            CASE nMode == 1 ; OutStd( Space( nIndent ) + xLine + hb_eol() )
+            CASE nMode == 2 ; OutStd( iif( n > 1, ", ", "" ) + xLine )
+            OTHERWISE       ; OutStd( "(" + hb_ntos( nMode ) + ") " + xLine + hb_eol() )
+         ENDCASE
+   ENDCASE
+
+   RETURN
+
+static function HBRawVersion()
+   return(;
+       hb_StrFormat( "%d.%d.%d%s (%s) (%s)";
+      ,hb_Version(HB_VERSION_MAJOR);
+      ,hb_Version(HB_VERSION_MINOR);
+      ,hb_Version(HB_VERSION_RELEASE);
+      ,hb_Version(HB_VERSION_STATUS);
+      ,hb_Version(HB_VERSION_ID);
+      ,"20"+Transform(hb_Version(HB_VERSION_REVISION),"99-99-99 99:99"));
+   ) as character
+
+static procedure ShowHelp(cExtraMessage as character,aArgs as array)
+
+   local aHelp as array
+   local nMode as numeric:=1
+
+   if (Empty(aArgs).or.(Len(aArgs)<=1).or.(Empty(aArgs[1])))
+      aHelp:={;
+         cExtraMessage;
+         ,"HB_SYSLOG ("+hb_ProgName()+") "+HBRawVersion();
+         ,"Copyright (c) 2024-"+hb_NToS(Year(Date()))+", "+hb_Version(HB_VERSION_URL_BASE);
+         ,"";
+         ,"Syntax:";
+         ,"";
+         ,{hb_ProgName()+" [options]"};
+         ,"";
+         ,"Options:";
+         ,{;
+              "-h or --help Show this help screen";
+             ,"-n=<name>    Specify the name of the server (default: hb_syslog)";
+             ,"-p=<port>    Specify the port number (default: 514)";
+             ,"-v=<version> Specify the server version (default: 1)";
+         };
+         ,"";
+      }
+   else
+      ShowHelp("Unrecognized help option")
+      return
+   endif
+
+   /* using hbmk2 style */
+   aEval(aHelp,{|x|ShowSubHelp(x,@nMode,0)})
+
+   return
