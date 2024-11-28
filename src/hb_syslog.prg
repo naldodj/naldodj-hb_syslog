@@ -228,10 +228,12 @@ static function getSeverity(cBuffer as character,nDefaultSeverity as numeric)
 
     local cPriority as character
 
-    local nPriority,nFacility,nSeverity as numeric
+    local nAT,nPriority,nFacility,nSeverity as numeric
 
     if ("<"$Left(cBuffer,1))
-        cPriority:=SubStr(cBuffer,2,AT(">",cBuffer)-2)
+        nAT:=AT(">",cBuffer)
+        cPriority:=SubStr(cBuffer,2,nAT-2)
+        nAT+=1
         /*PRI = (Facility * 8) + Severity*/
         nPriority:=Val(cPriority)
         /*
@@ -268,11 +270,11 @@ static function getSeverity(cBuffer as character,nDefaultSeverity as numeric)
         case 1 //Alert
         case 2 //Crit
             if (nSeverity==0)
-                cBuffer:="<Emerg>/"+cBuffer
+                cBuffer:=Stuff(cBuffer,nAT,0,"/<Emerg> ")
             elseif (nSeverity==1)
-                cBuffer:="<Alert>/"+cBuffer
+                cBuffer:=Stuff(cBuffer,nAT,0,"/<Alert> ")
             else
-                cBuffer:="<Crit>/"+cBuffer
+                cBuffer:=Stuff(cBuffer,nAT,0,"/<Crit> ")
             endif
             nSeverity:=HB_LOG_CRITICAL
             exit
@@ -285,14 +287,14 @@ static function getSeverity(cBuffer as character,nDefaultSeverity as numeric)
         case 5 //Notice
         case 6 //Info
             if (nSeverity==5)
-                cBuffer:="<Notice>/"+cBuffer
+                cBuffer:=Stuff(cBuffer,nAT,0,"/<Notice> ")
             else
-                cBuffer:="<Info>/"+cBuffer
+                cBuffer:=Stuff(cBuffer,nAT,0,"/<Info> ")
             endif
             nSeverity:=HB_LOG_INFO
             exit
         case 7 //Debug
-            cBuffer:="<Debug>/"+cBuffer
+            cBuffer:=Stuff(cBuffer,nAT,0,"/<Debug> ")
             nSeverity:=HB_LOG_DEBUG
             exit
         otherwise
