@@ -1,5 +1,7 @@
 /*
     hb_syslog.prg
+    ref.: ./github/harbour-core/contrib/xhb/hblog.prg
+          ./github/harbour-core/contrib/xhb/hblog.prg
     Released to Public Domain.
     compile: hbmk2.exe hb_syslog.prg -ohb_syslog.exe xhb.hbc -mt
     ref.: ./github/core/contrib/hbmisc/udpds.prg
@@ -13,13 +15,15 @@
 
 */
 
-#include "xhb.ch"
-
+#include "std.ch"
 #include "inkey.ch"
+
+#include "xhb.ch"
 
 #include "hbver.ch"
 #include "hblog.ch"
 #include "hbinkey.ch"
+#include "hbcompat.ch"
 #include "hbsocket.ch"
 
 #require "xhb"
@@ -153,13 +157,13 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
     local chb_BChar6 as character:=hb_BChar(6)
 
     local nStyle as numeric:=(HB_LOG_ST_DATE+HB_LOG_ST_ISODATE+HB_LOG_ST_TIME+HB_LOG_ST_LEVEL)
-    local nFilPrio as numeric:=HB_LOG_DEBUG
+    local nSeverity as numeric:=HB_LOG_DEBUG
     local nFileSize as numeric:=(10*(1024^2))
     local nFileCount as numeric:=5
 
     local uLen as usual /*ANYTYPE*/
 
-    INIT LOG ON FILE (nFilPrio,cFileName,nFileSize,nFileCount)
+    INIT LOG ON FILE (nSeverity,cFileName,nFileSize,nFileCount)
     SET LOG STYLE (nStyle)
 
     cName:=hb_StrToUTF8(cName)
@@ -194,9 +198,10 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
                 /*
                  * LOG:
                 */
+                nSeverity:=getSeverity(@cBuffer,nSeverity)
                 begin sequence with __BreakBlock()
                     cBuffer:=allTrim(hb_StrReplace(cBuffer,{hb_eol()=>""}))
-                    LOG cBuffer PRIORITY nFilPrio
+                    LOG cBuffer PRIORITY nSeverity
                 end sequence
             endif
         endif
@@ -205,6 +210,79 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
     CLOSE LOG
 
     return
+
+static function getSeverity(cBuffer as character,nDefaultSeverity as numeric)
+
+    local cPriority as character
+
+    local nPriority,nFacility,nSeverity as numeric
+
+    if ("<"$Left(cBuffer,1))
+        cPriority:=SubStr(cBuffer,2,AT(">",cBuffer)-2)
+        nPriority:=Val(cPriority)
+        /*
+            Facility    Valor   Significado
+            kern        0       Kernel messages
+            user        1       User-level messages
+            mail        2       Mail system
+            daemon      3       System daemons
+            auth        4       Security/authorization
+            syslog      5       Syslog messages
+            lpr         6       Print system
+            news        7       Network news subsystem
+            local0      16      Local use 0 (default)
+            local1      17      Local use 1
+            local2      18      Local use 2
+            local3      19      Local use 3
+            local4      20      Local use 4
+            local5      21      Local use 5
+            local6      22      Local use 6
+            local7      23      Local use 7
+        */
+        nFacility:=Int(nPriority/8)
+        HB_SYMBOL_UNUSED(nFacility)
+        //----------------------------------
+        nSeverity:=Int(nPriority%8)
+        switch (nSeverity)
+        case 0 //Emerg
+        case 1 //Alert
+        case 2 //Crit
+            if (nSeverity==0)
+                cBuffer:="<Emerg>/"+cBuffer
+            elseif (nSeverity==1)
+                cBuffer:="<Alert>/"+cBuffer
+            else
+                cBuffer:="<Crit>/"+cBuffer
+            endif
+            nSeverity:=HB_LOG_CRITICAL
+            exit
+        case 3 //Err
+            nSeverity:=HB_LOG_ERROR
+            exit
+        case 4 //Warning
+            nSeverity:=HB_LOG_WARNING
+            exit
+        case 5 //Notice
+        case 6 //Info
+            if (nSeverity==5)
+                cBuffer:="<Notice>/"+cBuffer
+            else
+                cBuffer:="<Info>/"+cBuffer
+            endif
+            nSeverity:=HB_LOG_INFO
+            exit
+        case 7 //Debug
+            cBuffer:="<Debug>/"+cBuffer
+            nSeverity:=HB_LOG_DEBUG
+            exit
+        otherwise
+            nSeverity:=nDefaultSeverity
+        endswitch
+    else
+        nSeverity:=nDefaultSeverity
+    endif
+
+return(nSeverity) as numeric
 
 static procedure ShowSubHelp(xLine as anytype,/*@*/nMode as numeric,nIndent as numeric,n as numeric)
 
