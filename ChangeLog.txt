@@ -3,6 +3,9 @@
    Entries may not always be in chronological/commit order.
    See license at the end of file. */
 
+2024-11-27 22:36 UTC naldodj
+  * src/hb_syslog.prg
+
 2024-11-27 22:27 UTC naldodj
   * src/hb_syslog.prg
 

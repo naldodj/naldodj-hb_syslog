@@ -1,10 +1,22 @@
 /*
-    hb_syslog.prg
-    ref.: ./github/harbour-core/contrib/xhb/hblog.prg
+
+ _      _                          _
+| |__  | |__      ___  _   _  ___ | |  ___    __ _     _ __   _ __   __ _
+| '_ \ | '_ \    / __|| | | |/ __|| | / _ \  / _` |   | '_ \ | '__| / _` |
+| | | || |_) |   \__ \| |_| |\__ \| || (_) || (_| | _ | |_) || |   | (_| |
+|_| |_||_.__/    |___/ \__, ||___/|_| \___/  \__, |(_)| .__/ |_|    \__, |
+                       |___/                 |___/    |_|           |___/
+
+    hb_syslog.prg: Released to Public Domain.
+    --------------------------------------------------------------------------------------
+    ref.: ./github/harbour-core/contrib/xhb/hblog.ch
           ./github/harbour-core/contrib/xhb/hblog.prg
-    Released to Public Domain.
+          ./github/harbour-core/contrib/xhb/hblognet.prg
+    --------------------------------------------------------------------------------------
     compile: hbmk2.exe hb_syslog.prg -ohb_syslog.exe xhb.hbc -mt
+    --------------------------------------------------------------------------------------
     ref.: ./github/core/contrib/hbmisc/udpds.prg
+    --------------------------------------------------------------------------------------
     TODO:
         +Install as service ref.: c:\github\core\contrib\hbnetio\utils\hbnetio\_winsvc.prg
         +.ini configuration
@@ -12,6 +24,7 @@
         +Other Log Types: FILE*,CONSOLE,MONITOR,SYSLOG,EMAIL,DEBUG,DBF
             ref.: F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblog.ch
                   F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblog.prg
+    --------------------------------------------------------------------------------------
 
 */
 
@@ -219,6 +232,7 @@ static function getSeverity(cBuffer as character,nDefaultSeverity as numeric)
 
     if ("<"$Left(cBuffer,1))
         cPriority:=SubStr(cBuffer,2,AT(">",cBuffer)-2)
+        /*PRI = (Facility * 8) + Severity*/
         nPriority:=Val(cPriority)
         /*
             Facility    Valor   Significado
@@ -238,10 +252,16 @@ static function getSeverity(cBuffer as character,nDefaultSeverity as numeric)
             local5      21      Local use 5
             local6      22      Local use 6
             local7      23      Local use 7
+            ---------------------------------------
+            Facility = PRI // 8
+            Facility = 134 // 8 = 16
         */
         nFacility:=Int(nPriority/8)
         HB_SYMBOL_UNUSED(nFacility)
-        //----------------------------------
+        /*----------------------------------
+            Severity = PRI % 8
+            Severity = 134 % 8 = 6
+        */
         nSeverity:=Int(nPriority%8)
         switch (nSeverity)
         case 0 //Emerg
