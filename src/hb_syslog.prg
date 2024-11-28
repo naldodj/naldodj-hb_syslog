@@ -24,6 +24,7 @@
         +Other Log Types: FILE*,CONSOLE,MONITOR,SYSLOG,EMAIL,DEBUG,DBF
             ref.: F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblog.ch
                   F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblog.prg
+                  F:\cygwin64\home\marin\naldodj-hb\contrib\xhb\hblognet.prg
     --------------------------------------------------------------------------------------
 
 */
@@ -57,6 +58,7 @@ procedure Main(...)
 
     local aArgs as array:=hb_AParams()
 
+    local cAddr as character
     local cName as character
     local cVersion as character
     local cParam as character
@@ -65,6 +67,7 @@ procedure Main(...)
     local idx as numeric
     local nKey as numeric
     local nPort as numeric
+    local nAddrFamily as numeric
 
     local phSocket as pointer
 
@@ -73,7 +76,8 @@ procedure Main(...)
         return
     endif
 
-    Hb_SetCodePage("UTF8")
+    hb_setCodePage("UTF8")
+    hb_cdpSelect("UTF8EX")
 
     if (;
          (Empty(aArgs));
@@ -118,13 +122,15 @@ procedure Main(...)
 
     QOut("Starting Log Server...")
     // Inicia o servidor
-    phSocket:=hb_udpds_Start(nPort,cName,cVersion)
+    nAddrFamily:=HB_SOCKET_AF_INET
+    cAddr:="0.0.0.0"
+    phSocket:=hb_udpds_Start(cName,cVersion,nAddrFamily,cAddr,nPort)
     if (phSocket==NIL)
         QOut("Error starting log server!")
         return
     endif
 
-    QOut("Log server ["+cName+"] started on:",NetName(),":",HB_NToS(nPort))
+    QOut("Log server ["+cName+"] started on:",NetName(),":",hb_NToS(nPort))
 
     QOut("Press <CTRL+Q> to shut down the server...")
 
@@ -136,17 +142,17 @@ procedure Main(...)
         hb_idleSleep(0.1)
     end while
 
-    hb_udpds_Stop(phSocket)
+    hb_udpds_Stop(phSocket,nAddrFamily,cAddr,nPort)
 
     return
 
 /* Server */
-static function hb_udpds_Start(nPort as numeric,cName as character,cVersion as character)
+static function hb_udpds_Start(cName as character,cVersion as character,nAddrFamily as numeric,cAddr as character,nPort as numeric)
 
     local phSocket as pointer
 
     if (!Empty(phSocket:=hb_socketOpen(NIL,HB_SOCKET_PT_DGRAM)))
-        if (hb_socketBind(phSocket,{HB_SOCKET_AF_INET,"0.0.0.0",nPort}))
+        if (hb_socketBind(phSocket,{nAddrFamily,cAddr,nPort}))
             hb_threadDetach(hb_threadStart(@UDPDS(),phSocket,cName,cVersion))
             return(phSocket)
         endif
@@ -155,7 +161,9 @@ static function hb_udpds_Start(nPort as numeric,cName as character,cVersion as c
 
     return(NIL)
 
-static function hb_udpds_Stop(phSocket as pointer)
+static function hb_udpds_Stop(phSocket as pointer,nAddrFamily as numeric,cAddr as character,nPort as numeric)
+    hb_socketSendTo(phSocket,"_E_X_I_T_",NIL,NIL,{nAddrFamily,cAddr,nPort})
+    hb_idleSleep(0.5)
     return(hb_socketClose(phSocket))
 
 static procedure UDPDS(phSocket as pointer,cName as character,cVersion as character)
@@ -180,7 +188,7 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
     SET LOG STYLE (nStyle)
 
     cName:=hb_StrToUTF8(cName)
-    cVersion:=iif(HB_ISSTRING(cVersion),hb_StrToUTF8(cVersion),"")
+    cVersion:=iif(hb_IsString(cVersion),hb_StrToUTF8(cVersion),"")
 
     while (.T.)
         cBuffer:=Space(2000)
@@ -207,6 +215,8 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
                 begin sequence with __BreakBlock()
                     hb_socketSendTo(phSocket,chb_BChar6+cName+chb_BChar0+cVersion,NIL,NIL,aAddr)
                 end sequence
+            elseif (Left(cBuffer,9)=="_E_X_I_T_")
+                EXIT
             else
                 /*
                  * LOG:
@@ -310,11 +320,11 @@ static procedure ShowSubHelp(xLine as anytype,/*@*/nMode as numeric,nIndent as n
 
    DO CASE
       CASE xLine == NIL
-      CASE HB_ISNUMERIC( xLine )
+      CASE hb_IsNumeric( xLine )
          nMode := xLine
-      CASE HB_ISEVALITEM( xLine )
+      CASE hb_IsEvalItem( xLine )
          Eval( xLine )
-      CASE HB_ISARRAY( xLine )
+      CASE hb_IsArray( xLine )
          IF nMode == 2
             OutStd( Space( nIndent ) + Space( 2 ) )
          ENDIF
@@ -351,7 +361,7 @@ static procedure ShowHelp(cExtraMessage as character,aArgs as array)
    if (Empty(aArgs).or.(Len(aArgs)<=1).or.(Empty(aArgs[1])))
       aHelp:={;
          cExtraMessage;
-         ,"HB_SYSLOG ("+hb_ProgName()+") "+HBRawVersion();
+         ,"hb_syslog ("+hb_ProgName()+") "+HBRawVersion();
          ,"Copyright (c) 2024-"+hb_NToS(Year(Date()))+", "+hb_Version(HB_VERSION_URL_BASE);
          ,"";
          ,"Syntax:";
