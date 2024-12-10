@@ -13,7 +13,7 @@
           ./github/harbour-core/contrib/xhb/hblog.prg
           ./github/harbour-core/contrib/xhb/hblognet.prg
     --------------------------------------------------------------------------------------
-    compile: hbmk2.exe hb_syslog.prg -ohb_syslog.exe xhb.hbc -mt
+    compile: ~/naldodj-hb/bin/cygwin/gcc/hbmk2.exe hb_syslog.prg -ohb_syslog.exe xhb.hbc -mt -compr=max
     --------------------------------------------------------------------------------------
     ref.: ./github/core/contrib/hbmisc/udpds.prg
     --------------------------------------------------------------------------------------
@@ -67,6 +67,8 @@ procedure Main(...)
     local idx as numeric
     local nKey as numeric
     local nPort as numeric
+    local nFileSize as numeric
+    local nFileSizeType as numeric
     local nAddrFamily as numeric
 
     local phSocket as pointer
@@ -109,6 +111,10 @@ procedure Main(...)
                nPort:=val(cParam)
             case (cArgName=="-v")
                cVersion:=cParam
+            case (cArgName=="-s")
+               nFileSize:=val(cParam)
+            case (cArgName=="-st")
+               nFileSizeType:=val(cParam)
             otherwise
                ShowHelp("Unrecognized option:"+cArgName+iif(Len(cParam)>0,"="+cParam,""))
                return
@@ -119,12 +125,14 @@ procedure Main(...)
     hb_default(@cName,"hb_syslog")
     hb_default(@cVersion,"1")
     hb_default(@nPort,514)// Porta padrão do Syslog
+    hb_default(@nFileSize,1)
+    hb_default(@nFileSizeType,2)
 
     QOut("Starting Log Server...")
     // Inicia o servidor
     nAddrFamily:=HB_SOCKET_AF_INET
     cAddr:="0.0.0.0"
-    phSocket:=hb_udpds_Start(cName,cVersion,nAddrFamily,cAddr,nPort)
+    phSocket:=hb_udpds_Start(cName,cVersion,nAddrFamily,cAddr,nPort,nFileSize,nFileSizeType)
     if (phSocket==NIL)
         QOut("Error starting log server!")
         return
@@ -147,13 +155,13 @@ procedure Main(...)
     return
 
 /* Server */
-static function hb_udpds_Start(cName as character,cVersion as character,nAddrFamily as numeric,cAddr as character,nPort as numeric)
+static function hb_udpds_Start(cName as character,cVersion as character,nAddrFamily as numeric,cAddr as character,nPort as numeric,nFileSize as numeric,nFileSizeType as numeric)
 
     local phSocket as pointer
 
     if (!Empty(phSocket:=hb_socketOpen(NIL,HB_SOCKET_PT_DGRAM)))
         if (hb_socketBind(phSocket,{nAddrFamily,cAddr,nPort}))
-            hb_threadDetach(hb_threadStart(@UDPDS(),phSocket,cName,cVersion))
+            hb_threadDetach(hb_threadStart(@UDPDS(),phSocket,cName,cVersion,nFileSize,nFileSizeType))
             return(phSocket)
         endif
         hb_socketClose(phSocket)
@@ -166,7 +174,7 @@ static function hb_udpds_Stop(phSocket as pointer,nAddrFamily as numeric,cAddr a
     hb_idleSleep(0.5)
     return(hb_socketClose(phSocket))
 
-static procedure UDPDS(phSocket as pointer,cName as character,cVersion as character)
+static procedure UDPDS(phSocket as pointer,cName as character,cVersion as character,nFileSize as numeric,nFileSizeType as numeric)
 
     local aAddr as array
 
@@ -177,12 +185,15 @@ static procedure UDPDS(phSocket as pointer,cName as character,cVersion as charac
     local chb_BChar5 as character:=hb_BChar(5)
     local chb_BChar6 as character:=hb_BChar(6)
 
+    local nKoef as numeric
     local nStyle as numeric:=(HB_LOG_ST_DATE+HB_LOG_ST_ISODATE+HB_LOG_ST_TIME+HB_LOG_ST_LEVEL)
     local nSeverity as numeric:=HB_LOG_DEBUG
-    local nFileSize as numeric:=(10*(1024^2))
     local nFileCount as numeric:=5
 
     local uLen as usual /*ANYTYPE*/
+
+    nKoef:=if((nFileSizeType==1),1,if((nFileSizeType==2),1024,(1024^2)))
+    nFileSize:=(nFileSize*nKoef)
 
     INIT LOG ON FILE (nSeverity,cFileName,nFileSize,nFileCount)
     SET LOG STYLE (nStyle)
@@ -374,6 +385,8 @@ static procedure ShowHelp(cExtraMessage as character,aArgs as array)
              ,"-n=<name>    Specify the name of the server (default: hb_syslog)";
              ,"-p=<port>    Specify the port number (default: 514)";
              ,"-v=<version> Specify the server version (default: 1)";
+             ,"-s=<log file size> Specify the log file size (default: 1)";
+             ,"-st=<log file size type> Specify the log file size type: 1=Bytes, 2=MegaBytes, 3=GigaBytes (default: 2).";
          };
          ,"";
       }
