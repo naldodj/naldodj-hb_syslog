@@ -1,7 +1,34 @@
 /* Encoding: UTF-8 (No BOM)  Notation (in 5th column):
      * Change  ! Fix  % Optimize  + Add  - Remove  ; Comment
    Entries may not always be in chronological/commit order.
-   See license at the end of file. */
+   See license at the end of file.
+   (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm")+" UTC naldodj (Add build scripts, env presets, and initial binaries)"
+*/
+
+2026-06-02 22:53 UTC naldodj (Add build scripts, env presets, and initial binaries)
+  Add build scripts, env presets, and initial binaries
+    Introduce a complete Windows build layout and tooling for hb_syslog: add environment presets (env/hb_syslog_env.ps1, env/hb_syslog_env.bat, env/enablezig.ps1), MSVC and optional Zig build scripts (mk/*.bat and mk/tools/go64_zig_build.bat), hbmk project and config files (hbp/, hbm/, hbc/), and prebuilt executable artifacts (exe/win/...).
+    Update README with build instructions and add /.vscode to .gitignore.
+    Also make a small whitespace/comment fix in src/hb_syslog.prg.
+    These changes provide reproducible local and gate builds, Zig experimental support, and helper scripts for validation and commit checks.
+      + env/enablezig.ps1
+      + env/hb_syslog_env.bat
+      + env/hb_syslog_env.ps1
+      + exe/win/msvc64/hb_syslog.exe
+      + exe/win/zig/hb_syslog.exe
+      + exe/win/zig/hb_syslog.pdb
+      + hbc/hb_syslog.hbc
+      + hbm/hb_syslog.hbm
+      + hbp/hb_syslog.hbp
+      + mk/go64_all.bat
+      + mk/go64_build.bat
+      + mk/go64_commit_check.bat
+      + mk/go64_gate.bat
+      + mk/go64_zig_build.bat
+      + mk/tools/go64_zig_build.bat
+      * .gitignore
+      * README.md
+      * src/hb_syslog.prg
 
 2024-12-10 13:53 UTC naldodj
   + bin/harbour/advapi32.dll
