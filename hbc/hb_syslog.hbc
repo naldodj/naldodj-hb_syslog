@@ -1,0 +1,4 @@
+# hb_syslog: Released to Public Domain.
+# hb_syslog package defaults.
+hbcs=xhb.hbc
+hbcs=hbmisc.hbc

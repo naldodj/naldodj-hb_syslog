@@ -1,0 +1,16 @@
+# hb_syslog: Released to Public Domain.
+
+# Syslog server executable target.
+-mt
+-compr=max
+
+{allmsvc}-lucrt
+{allmsvc}-ldflag=/NODEFAULTLIB:msvcrt
+{allmsvc}-ldflag+=/NODEFAULTLIB:libucrt
+
+../hbm/hb_syslog.hbm
+../hbc/hb_syslog.hbc
+
+../src/hb_syslog.prg
+
+-o../exe/win/${hb_comp}/${hb_name}

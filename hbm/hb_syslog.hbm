@@ -1,0 +1,10 @@
+# hb_syslog: Released to Public Domain.
+
+-mt
+-inc
+-compr=max
+
+# hb_syslog.prg enables -w3/-es2 after compatibility headers are loaded.
+
+xhb.hbc
+hbmisc.hbc
